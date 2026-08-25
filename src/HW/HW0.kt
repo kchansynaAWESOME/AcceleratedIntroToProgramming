@@ -1,4 +1,4 @@
-// Kingston Chansyna
+package HW// Kingston Chansyna
 
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
@@ -6,9 +6,9 @@ import io.kotest.matchers.shouldBe
 // Reverses the given message
 // @param origMessage the value of the base message
 // @return the reversed version of origMessage
-//fun reverseMessage(origMessage: String): String {
-//    return ""
-//}
+        //fun reverseMessage(origMessage: String): String {
+        //    return ""
+        //}
 
 // Combines two call signs into a single string
 // The shorter call sign is placed before the other one, similar sizes are ambiguous
