@@ -1,9 +1,4 @@
 //Kingston Chansyna, Kiera Winters
-
-package Labs
-
-import DiffList
-import StringList
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import kotlin.math.min
@@ -96,10 +91,10 @@ fun main() {
     applyDiff("I LOVE THIS",Diff.Insert(1," DONT")) shouldBe "I DONT LOVE THIS"
     shouldThrow<IndexOutOfBoundsException> {applyDiff("",Diff.Insert(1,""))}
     shouldThrow<IndexOutOfBoundsException> {applyDiff("I LOVE THIS",Diff.Insert(-20," DONT"))}
-    applyDiff("I REALLY LOVE THIS",Diff.Delete(1," REALLY",false)) shouldBe "I LOVE THIS"
-    applyDiff("I REALLY LOVE THIS",Diff.Delete(1," REALLY",true)) shouldBe "I        LOVE THIS"
-    shouldThrow<NoSuchElementException> {applyDiff("THIS IS THE BEST",Diff.Delete(1," REALLY",false))}
-    applyDiff("hi",Diff.Delete(0,"hi",false)) shouldBe ""
+    applyDiff("I REALLY LOVE THIS",Diff.Delete(1," REALLY",true)) shouldBe "I LOVE THIS"
+    applyDiff("I REALLY LOVE THIS",Diff.Delete(1," REALLY",false)) shouldBe "I        LOVE THIS"
+    shouldThrow<NoSuchElementException> {applyDiff("THIS IS THE BEST",Diff.Delete(1," REALLY",true))}
+    applyDiff("hi",Diff.Delete(0,"hi",true)) shouldBe ""
 }
 
 /* ==========================================
@@ -115,14 +110,25 @@ fun main() {
 // @throw IndexOutOfBoundsException if the Diff's position is invalid
 // @throw NoSuchElementException if the Delete Diff cannot find the the text2Delete at the given position
 fun applyDiff(initText:String,diff:Diff) : String {
-
     return when (diff) {
-        is Insert -> if (initText.length < diff.position || diff.position < 0) throw IndexOutOfBoundsException("out of bounds")
-        else initText.substring(0, diff.position) + diff.text2Insert + initText.substring(diff.position)
-        is Delete -> if (initText.length < diff.position || diff.position < 0) throw IndexOutOfBoundsException("out of bounds")
-        else if (initText.substring(diff.position,min(diff.text2Delete.length+1,initText.length)) == diff.text2Delete) initText.substring(0, diff.position) + (if (diff.shouldCondense) " ".repeat(diff.text2Delete.length) else "") + initText.substring(diff.position + diff.text2Delete.length)
-        else throw NoSuchElementException("no")
+        is Insert -> applyInsert(initText, diff)
+        is Delete -> applyDelete(initText, diff)
     }
+}
+
+fun applyInsert(initText: String, diff: Insert): String {
+    if (diff.position < 0 || diff.position > initText.length) throw IndexOutOfBoundsException("out of bounds")
+    return initText.substring(0, diff.position) + diff.text2Insert + initText.substring(diff.position)
+}
+
+fun applyDelete(initText: String, diff: Delete): String {
+    if (diff.position < 0 || diff.position > initText.length) throw IndexOutOfBoundsException("out of bounds")
+
+    val deleteEnd = min(diff.position + diff.text2Delete.length, initText.length)
+    if (initText.substring(diff.position, deleteEnd) != diff.text2Delete) throw NoSuchElementException("no")
+
+    val replacement = if (!diff.shouldCondense) " ".repeat(diff.text2Delete.length) else ""
+    return initText.substring(0, diff.position) + replacement + initText.substring(deleteEnd)
 }
 
 // you dont wanna know

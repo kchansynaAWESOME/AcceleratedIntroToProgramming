@@ -1,4 +1,3 @@
-import Labs.Diff
 
 /**
  * CS 1102 - HW1
