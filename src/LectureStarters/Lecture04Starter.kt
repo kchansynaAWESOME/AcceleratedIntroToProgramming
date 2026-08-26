@@ -104,6 +104,8 @@ fun main() {
 
     // Problem - 1
     minutesToClass(joesCommute) shouldBe (24.0 plusOrMinus 0.01)
+    minutesToClass(alisCommute) shouldBe (0.8*BIKE_SPEED + HELMET_DELAY plusOrMinus 0.01)
+    minutesToClass(anandsCommute) shouldBe (5*BUS_TRAVEL_TIME + 10 plusOrMinus 0.01)
 
 
     // Problem - 2
@@ -129,7 +131,11 @@ fun main() {
  */
 fun minutesToClass(aCommute : Commute) : Double {
     // Inventory: aCommute.distance  .hillsClimbed  .hasHelmet  .stopsAway  .minutesLate  *  +
-    return 0.0 // TODO: Stub - Replace Me
+    return when (aCommute) {
+        is Walk -> aCommute.distance * WALK_SPEED + aCommute.hillsClimbed * HILL_DELAY
+        is Bike -> aCommute.distance * BIKE_SPEED + (if (aCommute.hasHelmet) HELMET_DELAY else 0.0)
+        is Bus -> aCommute.stopsAway * BUS_TRAVEL_TIME + aCommute.minutesLate + 5
+    }
 }
 
 // Problem - 2 :  function composition, no when needed
@@ -140,7 +146,7 @@ fun minutesToClass(aCommute : Commute) : Double {
  */
 fun willBeLate(aCommute : Commute, minutesUntilClass : Int) : Boolean {
     // Inventory: minutesToClass(...)  minutesUntilClass  >
-    return false // TODO: Stub - Replace Me
+    return minutesToClass(aCommute) > minutesUntilClass
 }
 
 // Problem - 3 : consume a sum type AND produce a sum type
@@ -154,6 +160,10 @@ fun willBeLate(aCommute : Commute, minutesUntilClass : Int) : Boolean {
 fun adjustToSnow(aCommute : Commute) : Commute {
     // Inventory:   Walk(...)  Bike(...)  Bus(...)
     // aCommute.distance  .hillsClimbed  .hasHelmet  .stopsAway  .minutesLate  *  +
-    return aCommute // TODO: Stub - Replace Me
+    return when (aCommute) {
+        is Walk -> Walk(aCommute.distance, aCommute.hillsClimbed*2)
+        is Bike -> Walk(aCommute.distance, 1)
+        is Bus -> Bus(aCommute.stopsAway, aCommute.minutesLate+BUS_SNOW_DELAY)
+    }
 }
 
