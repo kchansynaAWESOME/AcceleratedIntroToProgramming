@@ -1,4 +1,6 @@
 //Kingston Chansyna, Kiera Winters
+
+package Labs
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import kotlin.math.min

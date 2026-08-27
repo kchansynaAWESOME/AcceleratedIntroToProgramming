@@ -1,3 +1,4 @@
+package Labs
 
 /**
  * CS 1102 - HW1
