@@ -39,8 +39,8 @@ sealed interface MyList<out T> {
     ) : MyList<T>
 } */
 
-typealias Sempty = StringList.Empty
-typealias Snode = StringList.Node
+typealias SEmpty = StringList.Empty
+typealias SNode = StringList.Node
 
 /* ==========================================
  * Example values
@@ -58,20 +58,24 @@ val someOtherNumbers =                                   // (3 4 -1 -5)
 val evens = INode(2, INode(4, IEmpty))                   // (2 4)
 val odds = INode(3, INode(1, INode(4, IEmpty)))
 
-val noWords = Sempty                                     // ()
-val oneWord = Snode("hello", Sempty)                     // ("hello")
-val courseName = Snode("cs", Snode("11", Snode("02", Sempty)))  // ("cs" "11" "02")
+val noWords = SEmpty                                     // ()
+val oneWord = SNode("hello", SEmpty)                     // ("hello")
+val courseName = SNode("cs", SNode("11", SNode("02", SEmpty)))  // ("cs" "11" "02")
 val courseTitle =                                        // ("Accelerated" "Introduction" "to" "Program" "Design")
-    Snode("Accelerated",
-        Snode("Introduction",
-            Snode("to",
-                Snode("Program",
-                    Snode("Design", Sempty)))))
+    SNode("Accelerated",
+        SNode("Introduction",
+            SNode("to",
+                SNode("Program",
+                    SNode("Design", SEmpty)))))
 
 /* ==========================================
  * The template
  *
- *   // TODO
+ * fun template(aList) {
+ *   when (aList) {
+ *      is SEmpty -> ...                                 // base case
+ *      is SNode -> aList.first ... template(aList.rest) // recursion case
+ * }
  *
  * The data is self-referential (a Node holds an IntList), so the function is self-referential too:
  *    * one branch per case, base case and recursive step.
@@ -84,6 +88,8 @@ val courseTitle =                                        // ("Accelerated" "Intr
 fun main() {
     // Problem - 1
     sum(someNumbers) shouldBe (3+1+4)
+    sum(negatives) shouldBe (-7-2)
+    sum(someNumbers) shouldBe (3+1+4)
 
     // Problem - 2
     sumAllEven(evens) shouldBe (4+2)
@@ -91,6 +97,7 @@ fun main() {
 
     // Problem - 3
     contains(someNumbers, 4) shouldBe true
+    contains(someNumbers, 11) shouldBe false
 
     // Problem - 4
     maximum(someOtherNumbers) shouldBe 4
@@ -123,9 +130,20 @@ fun main() {
  * @param aList any list of numbers, possibly empty
  * @return the total of all the numbers, and 0 for an empty list
  */
+//fun sum(aList : IntList) : Int {
+//    // Inventory:  IEmpty  INode  aList.first  aList.rest  sum(...) (recursive call)    +
+//    return 0 // TODO: Stub - Replace Me
+//}
+
+/** sum : Adds up every number in the list
+ * @param aList any list of numbers, possibly empty
+ * @return the total of all the numbers, and 0 for an empty list
+ */
 fun sum(aList : IntList) : Int {
-    // Inventory:  IEmpty  INode  aList.first  aList.rest  sum(...) (recursive call)    +
-    return 0 // TODO: Stub - Replace Me
+    return when (aList) {
+        is IEmpty -> 0
+        is INode -> aList.first + sum(aList.rest)
+    }
 }
 
 // Problem - 2
@@ -133,9 +151,20 @@ fun sum(aList : IntList) : Int {
  * @param aList any list of numbers, possibly empty
  * @return the total of the even numbers, and 0 if there are none
  */
+//fun sumAllEven(aList : IntList) : Int {
+//    // Inventory: ???
+//    return 0 // TODO: Stub - Replace Me
+//}
+
+/** sumAllEven : Adds up only the even numbers in the list
+ * @param aList any list of numbers, possibly empty
+ * @return the total of the even numbers, and 0 if there are none
+ */
 fun sumAllEven(aList : IntList) : Int {
-    // Inventory: ???
-    return 0 // TODO: Stub - Replace Me
+    return when (aList) {
+        is IEmpty -> 0
+        is INode -> ((aList.first % 2 + 1) * aList.first) + sum(aList.rest)
+    }
 }
 
 // Problem - 3
@@ -146,7 +175,10 @@ fun sumAllEven(aList : IntList) : Int {
  */
 fun contains(aList : IntList, target : Int) : Boolean {
     // Inventory: IEmpty  INode  aList.first  aList.rest  target  ==  ||  contains(...)
-    return false // TODO: Stub - Replace Me
+    return when (aList) {
+        is IEmpty -> false
+        is INode -> (target == aList.first) || contains(aList.rest, target)
+    }
 }
 
 // Problem - 4
@@ -156,8 +188,13 @@ fun contains(aList : IntList, target : Int) : Boolean {
  *         and Int.MIN_VALUE for an empty list (there is no largest number)
  */
 fun maximum(aList : IntList) : Int {
-    // Inventory: IEmpty  INode  aList.first  aList.rest  maximum(...)  >  if  Int.MIN_VALUE
-    return 0 // TODO: Stub - Replace Me
+    return when (aList) {
+        is IEmpty -> Int.MAX_VALUE
+        is INode -> {
+            val tempMax = maximum(aList.rest)
+            if (aList.first > tempMax) aList.first else tempMax
+        }
+    }
 }
 
 // Problem - 5
@@ -166,8 +203,11 @@ fun maximum(aList : IntList) : Int {
  * @return a list of just the even numbers from aList
  */
 fun removeOdds(aList : IntList) : IntList {
-    // Inventory: ???
-    return IEmpty // TODO: Stub - Replace Me
+    return when (aList) {
+        is IEmpty -> IEmpty
+        is INode -> if ((aList.first%2)==0) INode(aList.first,removeOdds(aList.rest)) else
+            removeOdds(aList.rest)
+    }
 }
 
 // Problem - 6
