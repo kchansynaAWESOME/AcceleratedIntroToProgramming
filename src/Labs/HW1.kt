@@ -1,7 +1,6 @@
 //Kingston Chansyna, Kiera Winters
 
 package Labs
-import LectureStarters.SNode
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -176,6 +175,23 @@ fun runTests() {
     undoDiff("I LOVE THIS", Delete(1," DONT",true)) shouldBe "I DONT LOVE THIS"
     undoDiff("", Delete(0,"DONT",true)) shouldBe "DONT"
 
+    // undoing a non-condensed Delete must overwrite the placeholder spaces it left behind, not insert alongside them
+    undoDiff("I        LOVE THIS", Delete(1," REALLY",false)) shouldBe "I REALLY LOVE THIS"
+
+    // round trip: applying a non-condensed delete and then undoing it returns the exact original text
+    val nonCondensedDeleted = applyDiff("I REALLY LOVE THIS", Delete(1," REALLY",false))
+    undoDiff(nonCondensedDeleted, Delete(1," REALLY",false)) shouldBe "I REALLY LOVE THIS"
+
+    // non-condensed delete sitting at the very end of the text
+    undoDiff("hi   ", Delete(2,"foo",false)) shouldBe "hifoo"
+
+    // undoing a condensed Delete must be a pure insert -- it must not consume any of the text that follows
+    undoDiff("123-459", Delete(3,"--",true)) shouldBe "123---459"
+
+    // round trip: applying a condensed delete and then undoing it returns the exact original text
+    val condensedDeleted = applyDiff("123---459", Delete(3,"--",true))
+    undoDiff(condensedDeleted, Delete(3,"--",true)) shouldBe "123---459"
+
     applyAllDiffs("attention all students i hate my job",
         Dnode(
             Insert(24," really"), Dnode(
@@ -304,6 +320,50 @@ fun runTests() {
             Dnode(Insert(100,"!"), Dempty), Dempty, Sempty))
     }
 
+    // undoing an edit and then redoing it returns to the original state
+    val roundTripStart = Document(testAuthor, testCreated, testUpdated, "Title", "I DONT LOVE THIS",
+        Dnode(Insert(1," DONT"), Dempty), Dempty, Sempty)
+    val roundTripUndone = undo(roundTripStart)
+    roundTripUndone.text shouldBe "I LOVE THIS"
+    roundTripUndone.history shouldBe Dempty
+    roundTripUndone.future shouldBe Dnode(Insert(1," DONT"), Dempty)
+
+    val roundTripRedone = redo(roundTripUndone)
+    roundTripRedone.text shouldBe roundTripStart.text
+    roundTripRedone.history shouldBe roundTripStart.history
+    roundTripRedone.future shouldBe roundTripStart.future
+    roundTripRedone.author shouldBe roundTripStart.author
+    roundTripRedone.created shouldBe roundTripStart.created
+    roundTripRedone.title shouldBe roundTripStart.title
+    roundTripRedone.tags shouldBe roundTripStart.tags
+
+    // a full undo -> undo -> redo -> redo round trip over a two-diff history returns to the original state
+    val chainDiffA = Insert(24," really")
+    val chainDiffB = Insert(31,", really")
+    val chainStart = Document(testAuthor, testCreated, testUpdated, "Title",
+        "attention all students i really, really hate my job",
+        Dnode(chainDiffB, Dnode(chainDiffA, Dempty)), Dempty, Sempty)
+
+    val afterFirstUndo = undo(chainStart)
+    afterFirstUndo.text shouldBe "attention all students i really hate my job"
+    afterFirstUndo.history shouldBe Dnode(chainDiffA, Dempty)
+    afterFirstUndo.future shouldBe Dnode(chainDiffB, Dempty)
+
+    val afterSecondUndo = undo(afterFirstUndo)
+    afterSecondUndo.text shouldBe "attention all students i hate my job"
+    afterSecondUndo.history shouldBe Dempty
+    afterSecondUndo.future shouldBe Dnode(chainDiffA, Dnode(chainDiffB, Dempty))
+
+    val afterFirstRedo = redo(afterSecondUndo)
+    afterFirstRedo.text shouldBe afterFirstUndo.text
+    afterFirstRedo.history shouldBe Dnode(chainDiffA, Dempty)
+    afterFirstRedo.future shouldBe Dnode(chainDiffB, Dempty)
+
+    val afterSecondRedo = redo(afterFirstRedo)
+    afterSecondRedo.text shouldBe chainStart.text
+    afterSecondRedo.history shouldBe chainStart.history
+    afterSecondRedo.future shouldBe chainStart.future
+
     // update edge cases
 
     // update from a clean document: applies the diff, and history becomes a single-entry list of it
@@ -393,6 +453,8 @@ fun runTests() {
 
     // duplicate entries still resolve to a single true
     hasTag(dupeTagsDoc, "dup") shouldBe true
+
+    shouldThrow<NoSuchElementException>{applyDelete("123 -45*9", Delete(6,"*",true))}
 }
 
 fun main() {
@@ -427,10 +489,12 @@ fun applyInsert(initText: String, diff: Insert): String {
 fun applyDelete(initText: String, diff: Delete): String {
     if (diff.position < 0 || diff.position > initText.length) throw IndexOutOfBoundsException("out of bounds")
 
-    val deleteEnd = min(diff.position + diff.text2Delete.length, initText.length)
-    if (initText.substring(diff.position, deleteEnd) != diff.text2Delete) throw NoSuchElementException("could not find text to delete")
+    val text2Delete = diff.text2Delete
+    val deleteEnd = min(diff.position + text2Delete.length, initText.length)
 
-    val replacement = if (!diff.shouldCondense) " ".repeat(diff.text2Delete.length) else ""
+    if (initText.substring(diff.position, deleteEnd) != text2Delete) throw NoSuchElementException("could not find $text2Delete in $initText")
+
+    val replacement = if (!diff.shouldCondense) " ".repeat(text2Delete.length) else ""
     return initText.substring(0, diff.position) + replacement + initText.substring(deleteEnd)
 }
 
@@ -446,7 +510,12 @@ fun applyDelete(initText: String, diff: Delete): String {
 fun undoDiff(text:String,diff: Diff) : String {
     return when (diff) {
         is Insert -> applyDelete(text,Delete(diff.position,diff.text2Insert,true))
-        is Delete -> applyInsert(text,Insert(diff.position,diff.text2Delete))
+        is Delete -> if (diff.shouldCondense) {
+            applyInsert(text, Insert(diff.position, diff.text2Delete))
+        } else {
+            val deleteEnd = min(diff.position + diff.text2Delete.length, text.length)
+            text.substring(0, diff.position) + diff.text2Delete + text.substring(deleteEnd)
+        }
     }
 }
 
@@ -499,7 +568,7 @@ fun redo(document:Document) : Document {
         document.created,
         currentTime(),
         document.title,
-        undoDiff(document.text,getFirst(document.history)),
+        applyDiff(document.text,getFirst(document.future)),
         Dnode(getFirst(document.future),document.history),
         if (document.future is Dnode) document.future.rest else Dempty,
         document.tags
@@ -520,7 +589,7 @@ fun undo(document:Document) : Document {
         document.created,
         currentTime(),
         document.title,
-        applyDiff(document.text,getFirst(document.future)),
+        undoDiff(document.text,getFirst(document.history)),
         if (document.history is Dnode) document.history.rest else Dempty,
         Dnode(getFirst(document.history),document.future),
         document.tags
