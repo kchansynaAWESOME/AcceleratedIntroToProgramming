@@ -10,7 +10,7 @@ import java.time.format.DateTimeFormatter
 
 /** a Datatype for an author
  * @property firstName the author's first name
- * @property lavstName the author's last name
+ * @property lastName the author's last name
  * @property email the author's email address
  * @property organization the organization the author belongs to
  */
@@ -161,7 +161,7 @@ data class Document (val author : Author,
  * ========================================== */
 
 // runs several tests for every function in this script
-fun runTests() {
+private fun runTests() {
     applyDiff("I LOVE THIS",Insert(1," DONT")) shouldBe "I DONT LOVE THIS"
     shouldThrow<IndexOutOfBoundsException> {applyDiff("",Insert(1,""))}
     shouldThrow<IndexOutOfBoundsException> {applyDiff("I LOVE THIS",Insert(-20," DONT"))}
